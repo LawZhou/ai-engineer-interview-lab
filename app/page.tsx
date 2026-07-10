@@ -36,6 +36,51 @@ const masteryLabel: Record<Mastery, string> = {
   2: "Interview ready",
 };
 
+function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) {
+  return `Act as a rigorous AI/ML engineering interview coach.
+
+Interview question:
+${card.question}
+
+${learnerNote?.trim() ? `My draft answer or weak-point notes:\n${learnerNote.trim()}\n\n` : ""}Reference answer frame:
+${card.answer}
+
+Important signals:
+${card.signals.map((signal) => `- ${signal}`).join("\n")}
+
+Common trap:
+${card.trap}
+
+Likely follow-up:
+${card.followUp}
+
+Please:
+1. Rate the answer Red, Yellow, or Green. Green requires a clear definition, concrete example, tradeoff, failure mode, and production concern.
+2. Identify anything missing, vague, or technically incorrect.
+3. Give me a stronger 60–90 second answer in natural spoken language.
+4. Ask the likely follow-up as an interviewer, then wait for my response.
+
+Do not invent personal experience for me. Use [ADD YOUR EXAMPLE] where my own project evidence is needed.`;
+}
+
+async function copyForAi(card: (typeof cards)[number], learnerNote?: string) {
+  const prompt = buildAiCoachPrompt(card, learnerNote);
+  try {
+    await navigator.clipboard.writeText(prompt);
+    return true;
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = prompt;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+}
+
 export default function Home() {
   const [view, setView] = useState<View>("Today");
   const [state, setState] = useState<StudyState>(EMPTY_STATE);
@@ -283,6 +328,14 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
   const [query, setQuery] = useState("");
   const [openCard, setOpenCard] = useState<string | null>(null);
   const [priority, setPriority] = useState("Core first");
+  const [copiedCard, setCopiedCard] = useState<string | null>(null);
+
+  const handleCopy = async (card: (typeof cards)[number]) => {
+    if (await copyForAi(card)) {
+      setCopiedCard(card.id);
+      window.setTimeout(() => setCopiedCard(null), 1800);
+    }
+  };
 
   const filtered = useMemo(() => {
     const normalized = query.toLowerCase();
@@ -331,7 +384,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
               {isOpen && (
                 <div className="concept-detail">
                   <div className="answer-column">
-                    <small>INTERVIEW-READY FRAME</small>
+                    <div className="answer-tools"><small>INTERVIEW-READY FRAME</small><button onClick={() => handleCopy(card)} title="Copy the question, answer frame, traps and coaching instructions">{copiedCard === card.id ? "Copied ✓" : "Copy Q+A for AI"}</button></div>
                     <p>{card.answer}</p>
                     <div className="signal-list">{card.signals.map((signal) => <span key={signal}>{signal}</span>)}</div>
                   </div>
@@ -375,6 +428,7 @@ function InterviewLab({
   const [rubric, setRubric] = useState([false, false, false, false, false]);
   const [frameType, setFrameType] = useState<keyof typeof systemDesignFrames>("LLM system");
   const [frameChecks, setFrameChecks] = useState<boolean[]>(systemDesignFrames["LLM system"].map(() => false));
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const categories = ["All", ...Array.from(new Set(cards.map((card) => card.category)))];
   const pool = cards.filter((card) => category === "All" || card.category === category);
@@ -399,6 +453,12 @@ function InterviewLab({
     updateMastery(current.id, score >= 4 ? 2 : score >= 2 ? 1 : 0);
     recordAttempt();
     setShowCoach(true);
+  };
+
+  const handleCopy = async () => {
+    const copied = await copyForAi(current, notes[current.id]);
+    setCopyStatus(copied ? "copied" : "failed");
+    window.setTimeout(() => setCopyStatus("idle"), 1800);
   };
 
   const switchFrame = (type: keyof typeof systemDesignFrames) => {
@@ -432,7 +492,7 @@ function InterviewLab({
             <div className="question-meta"><span>{current.category}</span><span>{String(questionIndex + 1).padStart(2, "0")} / {String(pool.length).padStart(2, "0")}</span></div>
             <h2>{current.question}</h2>
             <div className={`answer-timer ${seconds <= 15 ? "urgent" : ""}`}><span>{String(Math.floor(seconds / 60)).padStart(2, "0")}</span>:<span>{String(seconds % 60).padStart(2, "0")}</span></div>
-            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === 90 ? "Start 90-second answer" : "Resume"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
+            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === 90 ? "Start 90-second answer" : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
             <label className="notes-field"><span>Capture only what broke—not a transcript.</span><textarea value={notes[current.id] ?? ""} onChange={(event) => updateNote(current.id, event.target.value)} placeholder="Example: I defined it, but missed the tradeoff and production failure..." /></label>
             <div className="rubric-checks">
               {[
