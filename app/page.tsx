@@ -470,6 +470,7 @@ function InterviewLab({
   const [mode, setMode] = useState<"Mock answer" | "Design frame">("Mock answer");
   const [category, setCategory] = useState("All");
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [questionQuery, setQuestionQuery] = useState("");
   const [seconds, setSeconds] = useState(90);
   const [running, setRunning] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
@@ -481,6 +482,14 @@ function InterviewLab({
   const categories = ["All", ...Array.from(new Set(cards.map((card) => card.category)))];
   const pool = cards.filter((card) => category === "All" || card.category === category);
   const current = pool[questionIndex % pool.length] ?? cards[0];
+  const normalizedQuestionQuery = questionQuery.trim().toLowerCase();
+  const visibleQuestions = pool
+    .map((card, index) => ({ card, index }))
+    .filter(({ card }) =>
+      !normalizedQuestionQuery ||
+      card.question.toLowerCase().includes(normalizedQuestionQuery) ||
+      card.category.toLowerCase().includes(normalizedQuestionQuery),
+    );
 
   useEffect(() => {
     if (!running) return;
@@ -493,6 +502,11 @@ function InterviewLab({
 
   const nextQuestion = () => {
     setQuestionIndex((value) => (value + 1) % Math.max(pool.length, 1));
+    setSeconds(90); setRunning(false); setShowCoach(false); setRubric([false, false, false, false, false]);
+  };
+
+  const selectQuestion = (index: number) => {
+    setQuestionIndex(index);
     setSeconds(90); setRunning(false); setShowCoach(false); setRubric([false, false, false, false, false]);
   };
 
@@ -530,9 +544,34 @@ function InterviewLab({
       {mode === "Mock answer" ? (
         <div className="mock-layout">
           <aside className="mock-controls">
-            <label>QUESTION SET<select value={category} onChange={(event) => { setCategory(event.target.value); setQuestionIndex(0); }}>
+            <label>QUESTION SET<select value={category} onChange={(event) => { setCategory(event.target.value); setQuestionIndex(0); setQuestionQuery(""); }}>
               {categories.map((item) => <option key={item}>{item}</option>)}
             </select></label>
+            <div className="question-navigator">
+              <div className="question-navigator-header"><strong>JUMP TO A QUESTION</strong><span>{pool.length}</span></div>
+              <input
+                type="search"
+                value={questionQuery}
+                onChange={(event) => setQuestionQuery(event.target.value)}
+                placeholder="Search all questions"
+                aria-label="Search interview questions"
+              />
+              <div className="question-list" role="list" aria-label="Interview questions">
+                {visibleQuestions.map(({ card, index }) => (
+                  <button
+                    key={card.id}
+                    className={current.id === card.id ? "active" : ""}
+                    onClick={() => selectQuestion(index)}
+                    aria-current={current.id === card.id ? "true" : undefined}
+                  >
+                    <span>{String(index + 1).padStart(3, "0")}</span>
+                    <span><small>{card.category}</small><strong>{card.question}</strong></span>
+                    <i className={`m${mastery[card.id] ?? 0}`} aria-label={masteryLabel[mastery[card.id] ?? 0]} />
+                  </button>
+                ))}
+                {visibleQuestions.length === 0 && <p>No questions match that search.</p>}
+              </div>
+            </div>
             <div className="mini-stat"><span>{mastery[current.id] ?? 0}/2</span><small>CURRENT MASTERY</small></div>
             <div className="coach-rule"><strong>THE GREEN ANSWER</strong><p>Definition → example → tradeoff → failure mode → production concern.</p></div>
           </aside>
