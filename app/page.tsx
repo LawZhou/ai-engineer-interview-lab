@@ -36,7 +36,55 @@ const masteryLabel: Record<Mastery, string> = {
   2: "Interview ready",
 };
 
+const followUpByCategory: Record<string, [string, string]> = {
+  Positioning: [
+    "What did you personally own, and what evidence shows the result?",
+    "What would you do differently if you faced the same situation now?",
+  ],
+  "Python + SQL": [
+    "What are the time and space complexity, and which assumption makes them valid?",
+    "Which edge case would break a naive implementation?",
+  ],
+  "ML fundamentals": [
+    "How would you validate this choice and monitor it in production?",
+    "How would your answer change under severe class imbalance or data drift?",
+  ],
+  "LLM core": [
+    "What is the most important production failure mode here?",
+    "How would you test this behavior rather than rely on a good demo?",
+  ],
+  RAG: [
+    "How would you determine whether retrieval or generation caused a bad answer?",
+    "What changes when the documents are private and frequently updated?",
+  ],
+  Evaluation: [
+    "How would you build a representative evaluation set and slice the results?",
+    "Which regression would block release or trigger rollback?",
+  ],
+  "Cloud + MLOps": [
+    "How does the design change under burst traffic and a strict latency target?",
+    "What happens during a partial outage, and how do you recover safely?",
+  ],
+  "System design": [
+    "What becomes the first bottleneck at ten times the traffic?",
+    "What would you deliberately leave out of version one, and why?",
+  ],
+  "Advanced LLM": [
+    "Which hardware or memory constraint most affects this decision?",
+    "How would you benchmark quality, latency, throughput and cost together?",
+  ],
+};
+
+function getFollowUps(card: (typeof cards)[number]) {
+  const contextual = followUpByCategory[card.category] ?? [
+    "What tradeoff would make you choose a different approach?",
+    "How would you validate and monitor this in production?",
+  ];
+  return [card.followUp, ...contextual];
+}
+
 function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) {
+  const followUps = getFollowUps(card);
   return `Act as a rigorous AI/ML engineering interview coach.
 
 Interview question:
@@ -51,14 +99,14 @@ ${card.signals.map((signal) => `- ${signal}`).join("\n")}
 Common trap:
 ${card.trap}
 
-Likely follow-up:
-${card.followUp}
+Follow-up ladder:
+${followUps.map((question, index) => `${index + 1}. ${question}`).join("\n")}
 
 Please:
 1. Rate the answer Red, Yellow, or Green. Green requires a clear definition, concrete example, tradeoff, failure mode, and production concern.
 2. Identify anything missing, vague, or technically incorrect.
 3. Give me a stronger 60–90 second answer in natural spoken language.
-4. Ask the likely follow-up as an interviewer, then wait for my response.
+4. Ask the follow-up questions one at a time, waiting for my response before continuing.
 
 Do not invent personal experience for me. Use [ADD YOUR EXAMPLE] where my own project evidence is needed.`;
 }
@@ -354,7 +402,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
       <div className="page-title">
         <div className="eyebrow">KNOWLEDGE / ACTIVE RECALL</div>
         <h1>Know it well enough to <em>defend it.</em></h1>
-        <p>Every card includes the answer signal, the common trap and the next question an interviewer is likely to ask.</p>
+        <p>Every card includes the answer signal, the common trap and a three-question follow-up ladder.</p>
       </div>
       <div className="filter-bar">
         <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search concepts, e.g. chunking" /></label>
@@ -390,7 +438,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
                   </div>
                   <div className="pressure-column">
                     <div><small>COMMON TRAP</small><p>{card.trap}</p></div>
-                    <div><small>FOLLOW-UP PRESSURE</small><p>{card.followUp}</p></div>
+                    <div className="follow-up-block"><small>FOLLOW-UP LADDER</small><ol>{getFollowUps(card).map((question) => <li key={question}>{question}</li>)}</ol></div>
                     <div className="rating-row vertical">
                       <small>RATE YOUR SPOKEN ANSWER</small>
                       <div><button className={score === 0 ? "selected" : ""} onClick={() => updateMastery(card.id, 0)}>Repair</button><button className={score === 1 ? "selected" : ""} onClick={() => updateMastery(card.id, 1)}>Clear</button><button className={score === 2 ? "selected" : ""} onClick={() => updateMastery(card.id, 2)}>Ready</button></div>
@@ -505,7 +553,7 @@ function InterviewLab({
             {showCoach && (
               <div className="coach-answer">
                 <small>COACH’S ANSWER FRAME</small><p>{current.answer}</p>
-                <div className="coach-grid"><div><strong>Signals to hit</strong>{current.signals.map((item) => <span key={item}>{item}</span>)}</div><div><strong>Likely follow-up</strong><p>{current.followUp}</p></div></div>
+                <div className="coach-grid"><div><strong>Signals to hit</strong>{current.signals.map((item) => <span key={item}>{item}</span>)}</div><div><strong>Follow-up ladder</strong><ol>{getFollowUps(current).map((question) => <li key={question}>{question}</li>)}</ol></div></div>
               </div>
             )}
           </div>

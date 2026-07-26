@@ -1,3 +1,5 @@
+import { extraCards } from "./extra-cards";
+
 export type Week = {
   week: number;
   phase: string;
@@ -101,7 +103,7 @@ export const weeks: Week[] = [
   },
 ];
 
-export const cards: Card[] = [
+const coreCards: Card[] = [
   {
     id: "intro",
     category: "Positioning",
@@ -903,6 +905,8 @@ export const cards: Card[] = [
     priority: "Advanced",
   },
 ];
+
+export const cards = [...coreCards, ...extraCards] satisfies Card[];
 
 export const readinessGate = [
   "Tell me about yourself.",
