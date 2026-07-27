@@ -1,6 +1,10 @@
-# Forge — Local AI Interview Lab
+# Forge — AI Interview Lab
 
-Forge is a private, local study app for AI Engineer, LLM Engineer, ML Engineer, Applied AI, and ML Platform interviews.
+Forge is a serious study app for AI Engineer, LLM Engineer, ML Engineer, Applied AI, and ML Platform interviews.
+
+## Live website
+
+**https://lawzhou.github.io/ai-engineer-interview-lab/**
 
 It contains:
 
@@ -12,7 +16,7 @@ It contains:
 - A 10-week roadmap and readiness gate
 - Copyable coaching prompts that work with any AI—no API key required
 
-Progress and notes stay in the browser on this Mac. Forge has no account, login, cloud database, or OpenAI hosting configuration.
+Progress and notes stay in the browser on each device. Forge has no account, login, cloud database, API key, or OpenAI hosting configuration.
 
 ## One-click launch on Mac
 
