@@ -1,4 +1,5 @@
 import { extraCards } from "./extra-cards";
+import { dataEngineeringCards } from "./data-engineering-cards";
 
 export type Week = {
   week: number;
@@ -906,7 +907,7 @@ const coreCards: Card[] = [
   },
 ];
 
-export const cards = [...coreCards, ...extraCards] satisfies Card[];
+export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards] satisfies Card[];
 
 export const readinessGate = [
   "Tell me about yourself.",

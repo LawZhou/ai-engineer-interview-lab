@@ -45,6 +45,10 @@ const followUpByCategory: Record<string, [string, string]> = {
     "What are the time and space complexity, and which assumption makes them valid?",
     "Which edge case would break a naive implementation?",
   ],
+  "Data engineering": [
+    "How would you make this safe to retry or backfill without corrupting downstream data?",
+    "Which freshness, correctness and cost signals would you monitor in production?",
+  ],
   "ML fundamentals": [
     "How would you validate this choice and monitor it in production?",
     "How would your answer change under severe class imbalance or data drift?",
