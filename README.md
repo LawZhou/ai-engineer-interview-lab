@@ -8,7 +8,7 @@ Forge is a serious study app for AI Engineer, LLM Engineer, ML Engineer, Applied
 
 It contains:
 
-- **140 primary interview questions** grounded in the supplied 10-week study plan and production data engineering
+- **162 primary interview questions** grounded in the supplied study plan, production data engineering, coding and code review
 - **Three follow-up questions per primary question**
 - Interview-ready answer frames, key signals, common traps, and mastery ratings
 - Timed mock answers and saved weak-point notes

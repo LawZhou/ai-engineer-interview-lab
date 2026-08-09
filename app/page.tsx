@@ -36,6 +36,12 @@ const masteryLabel: Record<Mastery, string> = {
   2: "Interview ready",
 };
 
+const defaultRubric = ["Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern"];
+const rubricByCategory: Record<string, string[]> = {
+  Coding: ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Production concern"],
+  "Code review": ["Root cause", "Severity", "Concrete fix", "Tests", "Production impact"],
+};
+
 const followUpByCategory: Record<string, [string, string]> = {
   Positioning: [
     "What did you personally own, and what evidence shows the result?",
@@ -48,6 +54,14 @@ const followUpByCategory: Record<string, [string, string]> = {
   "Data engineering": [
     "How would you make this safe to retry or backfill without corrupting downstream data?",
     "Which freshness, correctness and cost signals would you monitor in production?",
+  ],
+  Coding: [
+    "What are the time and space complexity, including the worst-case input?",
+    "How would you test the boundary cases and adapt this for production-scale data?",
+  ],
+  "Code review": [
+    "Would you block this change, and which issue would you require the author to fix first?",
+    "Which test or production signal would prove the revised code is safe?",
   ],
   "ML fundamentals": [
     "How would you validate this choice and monitor it in production?",
@@ -87,6 +101,10 @@ function getFollowUps(card: (typeof cards)[number]) {
   return [card.followUp, ...contextual];
 }
 
+function getRubricItems(card: (typeof cards)[number]) {
+  return rubricByCategory[card.category] ?? defaultRubric;
+}
+
 function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) {
   const followUps = getFollowUps(card);
   return `Act as a rigorous AI/ML engineering interview coach.
@@ -94,7 +112,7 @@ function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) 
 Interview question:
 ${card.question}
 
-${learnerNote?.trim() ? `My draft answer or weak-point notes:\n${learnerNote.trim()}\n\n` : ""}Reference answer frame:
+${card.code ? `Code or query to analyze:\n\`\`\`\n${card.code}\n\`\`\`\n\n` : ""}${learnerNote?.trim() ? `My draft answer or weak-point notes:\n${learnerNote.trim()}\n\n` : ""}Reference answer frame:
 ${card.answer}
 
 Important signals:
@@ -107,7 +125,7 @@ Follow-up ladder:
 ${followUps.map((question, index) => `${index + 1}. ${question}`).join("\n")}
 
 Please:
-1. Rate the answer Red, Yellow, or Green. Green requires a clear definition, concrete example, tradeoff, failure mode, and production concern.
+1. Rate the answer Red, Yellow, or Green. Green requires: ${getRubricItems(card).join(", ")}.
 2. Identify anything missing, vague, or technically incorrect.
 3. Give me a stronger 60–90 second answer in natural spoken language.
 4. Ask the follow-up questions one at a time, waiting for my response before continuing.
@@ -437,6 +455,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
                 <div className="concept-detail">
                   <div className="answer-column">
                     <div className="answer-tools"><small>INTERVIEW-READY FRAME</small><button onClick={() => handleCopy(card)} title="Copy the question, answer frame, traps and coaching instructions">{copiedCard === card.id ? "Copied ✓" : "Copy Q+A for AI"}</button></div>
+                    {card.code && <pre className="question-code"><code>{card.code}</code></pre>}
                     <p>{card.answer}</p>
                     <div className="signal-list">{card.signals.map((signal) => <span key={signal}>{signal}</span>)}</div>
                   </div>
@@ -486,6 +505,7 @@ function InterviewLab({
   const categories = ["All", ...Array.from(new Set(cards.map((card) => card.category)))];
   const pool = cards.filter((card) => category === "All" || card.category === category);
   const current = pool[questionIndex % pool.length] ?? cards[0];
+  const rubricItems = getRubricItems(current);
   const normalizedQuestionQuery = questionQuery.trim().toLowerCase();
   const visibleQuestions = pool
     .map((card, index) => ({ card, index }))
@@ -577,18 +597,17 @@ function InterviewLab({
               </div>
             </div>
             <div className="mini-stat"><span>{mastery[current.id] ?? 0}/2</span><small>CURRENT MASTERY</small></div>
-            <div className="coach-rule"><strong>THE GREEN ANSWER</strong><p>Definition → example → tradeoff → failure mode → production concern.</p></div>
+            <div className="coach-rule"><strong>THE GREEN ANSWER</strong><p>{rubricItems.join(" → ")}.</p></div>
           </aside>
           <div className="mock-stage">
             <div className="question-meta"><span>{current.category}</span><span>{String(questionIndex + 1).padStart(2, "0")} / {String(pool.length).padStart(2, "0")}</span></div>
             <h2>{current.question}</h2>
+            {current.code && <pre className="question-code mock-code"><code>{current.code}</code></pre>}
             <div className={`answer-timer ${seconds <= 15 ? "urgent" : ""}`}><span>{String(Math.floor(seconds / 60)).padStart(2, "0")}</span>:<span>{String(seconds % 60).padStart(2, "0")}</span></div>
             <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === 90 ? "Start 90-second answer" : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
             <label className="notes-field"><span>Capture only what broke—not a transcript.</span><textarea value={notes[current.id] ?? ""} onChange={(event) => updateNote(current.id, event.target.value)} placeholder="Example: I defined it, but missed the tradeoff and production failure..." /></label>
             <div className="rubric-checks">
-              {[
-                "Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern",
-              ].map((item, index) => (
+              {rubricItems.map((item, index) => (
                 <label key={item}><input type="checkbox" checked={rubric[index]} onChange={() => setRubric((values) => values.map((value, position) => position === index ? !value : value))} /><span>{item}</span></label>
               ))}
             </div>

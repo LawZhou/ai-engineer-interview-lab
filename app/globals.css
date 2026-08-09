@@ -162,6 +162,8 @@ select { appearance: none; border: 1px solid var(--ink); border-radius: 0; paddi
 .answer-tools button, .copy-ai-button { border: 1px solid var(--ink); background: var(--acid); padding: 8px 10px; cursor: pointer; font: 800 9px/1 var(--font-geist-mono), monospace; box-shadow: 2px 2px 0 var(--ink); }
 .answer-tools button:hover, .copy-ai-button:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
 .answer-column > p { font: 400 18px/1.55 Georgia, serif; margin: 12px 0 22px; }
+.question-code { margin: 14px 0 20px; border: 1px solid var(--ink); background: var(--ink); color: #edf3ee; padding: 16px; overflow-x: auto; white-space: pre; font: 500 12px/1.55 var(--font-geist-mono), monospace; tab-size: 2; }
+.question-code.mock-code { max-width: 900px; margin: 0 0 24px; background: #202a2c; }
 .signal-list { display: flex; gap: 6px; flex-wrap: wrap; }
 .pressure-column { display: grid; gap: 17px; border-left: 1px solid var(--line); padding-left: 24px; }
 .pressure-column p { font-size: 12px; line-height: 1.45; margin: 5px 0 0; }
@@ -338,6 +340,7 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px
   .mock-controls { min-height: 220px; }
   .question-list { max-height: 360px; }
   .mock-stage { padding: 28px 20px; }
+  .question-code { font-size: 11px; padding: 13px; }
   .rubric-checks { grid-template-columns: 1fr; }
   .rubric-checks label { border-right: 0; }
   .coach-grid { grid-template-columns: 1fr; }

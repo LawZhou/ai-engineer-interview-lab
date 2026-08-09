@@ -1,5 +1,6 @@
 import { extraCards } from "./extra-cards";
 import { dataEngineeringCards } from "./data-engineering-cards";
+import { codingCards } from "./coding-cards";
 
 export type Week = {
   week: number;
@@ -14,6 +15,7 @@ export type Card = {
   id: string;
   category: string;
   question: string;
+  code?: string;
   answer: string;
   signals: string[];
   trap: string;
@@ -907,7 +909,7 @@ const coreCards: Card[] = [
   },
 ];
 
-export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards] satisfies Card[];
+export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards, ...codingCards] satisfies Card[];
 
 export const readinessGate = [
   "Tell me about yourself.",
