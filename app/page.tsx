@@ -37,9 +37,14 @@ const masteryLabel: Record<Mastery, string> = {
 };
 
 const defaultRubric = ["Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern"];
+const rapidFireRubric = ["Correct definition", "Key distinction", "Why it matters", "One tradeoff", "Under 45 seconds"];
 const rubricByCategory: Record<string, string[]> = {
   Coding: ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Production concern"],
   "Code review": ["Root cause", "Severity", "Concrete fix", "Tests", "Production impact"],
+  "AI rapid fire": rapidFireRubric,
+  "ML rapid fire": rapidFireRubric,
+  "Data engineering rapid fire": rapidFireRubric,
+  "Data science rapid fire": rapidFireRubric,
 };
 
 const followUpByCategory: Record<string, [string, string]> = {
@@ -54,6 +59,22 @@ const followUpByCategory: Record<string, [string, string]> = {
   "Data engineering": [
     "How would you make this safe to retry or backfill without corrupting downstream data?",
     "Which freshness, correctness and cost signals would you monitor in production?",
+  ],
+  "AI rapid fire": [
+    "What is the most important production implication of this concept?",
+    "Which nearby concept do candidates commonly confuse with it?",
+  ],
+  "ML rapid fire": [
+    "How would you observe or validate this with real model data?",
+    "Which assumption would make this explanation incomplete or wrong?",
+  ],
+  "Data engineering rapid fire": [
+    "How does this behave under retry, overload or partial failure?",
+    "Which metric would show that the design is failing in production?",
+  ],
+  "Data science rapid fire": [
+    "Which assumption must hold before you trust this conclusion?",
+    "How would you explain the result and uncertainty to a non-technical stakeholder?",
   ],
   Coding: [
     "What are the time and space complexity, including the worst-case input?",
@@ -127,7 +148,7 @@ ${followUps.map((question, index) => `${index + 1}. ${question}`).join("\n")}
 Please:
 1. Rate the answer Red, Yellow, or Green. Green requires: ${getRubricItems(card).join(", ")}.
 2. Identify anything missing, vague, or technically incorrect.
-3. Give me a stronger 60–90 second answer in natural spoken language.
+3. Give me a stronger ${card.answerSeconds ? `answer that fits within ${card.answerSeconds} seconds` : "60–90 second answer"} in natural spoken language.
 4. Ask the follow-up questions one at a time, waiting for my response before continuing.
 
 Do not invent personal experience for me. Use [ADD YOUR EXAMPLE] where my own project evidence is needed.`;
@@ -505,6 +526,7 @@ function InterviewLab({
   const categories = ["All", ...Array.from(new Set(cards.map((card) => card.category)))];
   const pool = cards.filter((card) => category === "All" || card.category === category);
   const current = pool[questionIndex % pool.length] ?? cards[0];
+  const answerSeconds = current.answerSeconds ?? 90;
   const rubricItems = getRubricItems(current);
   const normalizedQuestionQuery = questionQuery.trim().toLowerCase();
   const visibleQuestions = pool
@@ -524,14 +546,22 @@ function InterviewLab({
     return () => window.clearInterval(timer);
   }, [running]);
 
+  const resetPractice = (card: (typeof cards)[number]) => {
+    setSeconds(card.answerSeconds ?? 90);
+    setRunning(false);
+    setShowCoach(false);
+    setRubric([false, false, false, false, false]);
+  };
+
   const nextQuestion = () => {
-    setQuestionIndex((value) => (value + 1) % Math.max(pool.length, 1));
-    setSeconds(90); setRunning(false); setShowCoach(false); setRubric([false, false, false, false, false]);
+    const nextIndex = (questionIndex + 1) % Math.max(pool.length, 1);
+    setQuestionIndex(nextIndex);
+    resetPractice(pool[nextIndex] ?? cards[0]);
   };
 
   const selectQuestion = (index: number) => {
     setQuestionIndex(index);
-    setSeconds(90); setRunning(false); setShowCoach(false); setRubric([false, false, false, false, false]);
+    resetPractice(pool[index] ?? cards[0]);
   };
 
   const submitAttempt = () => {
@@ -568,7 +598,11 @@ function InterviewLab({
       {mode === "Mock answer" ? (
         <div className="mock-layout">
           <aside className="mock-controls">
-            <label>QUESTION SET<select value={category} onChange={(event) => { setCategory(event.target.value); setQuestionIndex(0); setQuestionQuery(""); }}>
+            <label>QUESTION SET<select value={category} onChange={(event) => {
+              const nextCategory = event.target.value;
+              const nextCard = cards.find((card) => nextCategory === "All" || card.category === nextCategory) ?? cards[0];
+              setCategory(nextCategory); setQuestionIndex(0); setQuestionQuery(""); resetPractice(nextCard);
+            }}>
               {categories.map((item) => <option key={item}>{item}</option>)}
             </select></label>
             <div className="question-navigator">
@@ -604,7 +638,7 @@ function InterviewLab({
             <h2>{current.question}</h2>
             {current.code && <pre className="question-code mock-code"><code>{current.code}</code></pre>}
             <div className={`answer-timer ${seconds <= 15 ? "urgent" : ""}`}><span>{String(Math.floor(seconds / 60)).padStart(2, "0")}</span>:<span>{String(seconds % 60).padStart(2, "0")}</span></div>
-            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === 90 ? "Start 90-second answer" : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
+            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === answerSeconds ? `Start ${answerSeconds}-second answer` : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
             <label className="notes-field"><span>Capture only what broke—not a transcript.</span><textarea value={notes[current.id] ?? ""} onChange={(event) => updateNote(current.id, event.target.value)} placeholder="Example: I defined it, but missed the tradeoff and production failure..." /></label>
             <div className="rubric-checks">
               {rubricItems.map((item, index) => (
