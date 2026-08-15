@@ -12,8 +12,10 @@ import {
 
 type View = "Today" | "Concepts" | "Interview lab" | "Roadmap";
 type Mastery = 0 | 1 | 2;
+type QuestionStatus = "completed" | "revisit";
 type StudyState = {
   mastery: Record<string, Mastery>;
+  questionStatus: Record<string, QuestionStatus>;
   completedWeeks: number[];
   gate: boolean[];
   attempts: number;
@@ -23,6 +25,7 @@ type StudyState = {
 
 const EMPTY_STATE: StudyState = {
   mastery: {},
+  questionStatus: {},
   completedWeeks: [],
   gate: readinessGate.map(() => false),
   attempts: 0,
@@ -34,6 +37,11 @@ const masteryLabel: Record<Mastery, string> = {
   0: "Needs repair",
   1: "Can explain",
   2: "Interview ready",
+};
+
+const questionStatusLabel: Record<QuestionStatus, string> = {
+  completed: "Completed",
+  revisit: "Need to revisit",
 };
 
 const defaultRubric = ["Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern"];
@@ -172,6 +180,27 @@ async function copyForAi(card: (typeof cards)[number], learnerNote?: string) {
   }
 }
 
+function StudyStatusControl({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value?: QuestionStatus;
+  onChange: (status?: QuestionStatus) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`study-status-control ${compact ? "compact" : ""}`} role="group" aria-label="Study status">
+      <span>STUDY STATUS</span>
+      <div>
+        <button className={!value ? "selected" : ""} aria-pressed={!value} onClick={() => onChange(undefined)}>Unlabeled</button>
+        <button className={value === "completed" ? "selected completed" : ""} aria-pressed={value === "completed"} onClick={() => onChange("completed")}>Completed</button>
+        <button className={value === "revisit" ? "selected revisit" : ""} aria-pressed={value === "revisit"} onClick={() => onChange("revisit")}>Need to revisit</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [view, setView] = useState<View>("Today");
   const [state, setState] = useState<StudyState>(EMPTY_STATE);
@@ -208,6 +237,15 @@ export default function Home() {
 
   const updateMastery = (id: string, score: Mastery) => {
     setState((current) => ({ ...current, mastery: { ...current.mastery, [id]: score } }));
+  };
+
+  const updateQuestionStatus = (id: string, status?: QuestionStatus) => {
+    setState((current) => {
+      const questionStatus = { ...current.questionStatus };
+      if (status) questionStatus[id] = status;
+      else delete questionStatus[id];
+      return { ...current, questionStatus };
+    });
   };
 
   const toggleWeek = (week: number) => {
@@ -251,16 +289,19 @@ export default function Home() {
             readiness={readiness}
             setView={setView}
             updateMastery={updateMastery}
+            updateQuestionStatus={updateQuestionStatus}
             setState={setState}
           />
         )}
-        {view === "Concepts" && <ConceptsView mastery={state.mastery} updateMastery={updateMastery} />}
+        {view === "Concepts" && <ConceptsView mastery={state.mastery} questionStatus={state.questionStatus} updateMastery={updateMastery} updateQuestionStatus={updateQuestionStatus} />}
         {view === "Interview lab" && (
           <InterviewLab
             notes={state.notes}
             mastery={state.mastery}
+            questionStatus={state.questionStatus}
             updateNote={updateNote}
             updateMastery={updateMastery}
+            updateQuestionStatus={updateQuestionStatus}
             recordAttempt={() => setState((current) => ({ ...current, attempts: current.attempts + 1 }))}
           />
         )}
@@ -283,6 +324,7 @@ function TodayView({
   readiness,
   setView,
   updateMastery,
+  updateQuestionStatus,
   setState,
 }: {
   state: StudyState;
@@ -290,6 +332,7 @@ function TodayView({
   readiness: number;
   setView: (view: View) => void;
   updateMastery: (id: string, score: Mastery) => void;
+  updateQuestionStatus: (id: string, status?: QuestionStatus) => void;
   setState: React.Dispatch<React.SetStateAction<StudyState>>;
 }) {
   const [seconds, setSeconds] = useState(25 * 60);
@@ -297,6 +340,14 @@ function TodayView({
   const [revealed, setRevealed] = useState(false);
   const focusCard = cards[(todayIndex * 3 + state.attempts) % cards.length];
   const currentWeek = weeks.find((week) => !state.completedWeeks.includes(week.week)) ?? weeks[9];
+  const statusRows = Array.from(new Set(cards.map((card) => card.category))).map((category) => {
+    const categoryCards = cards.filter((card) => card.category === category);
+    const completed = categoryCards.filter((card) => state.questionStatus[card.id] === "completed").length;
+    const revisit = categoryCards.filter((card) => state.questionStatus[card.id] === "revisit").length;
+    return { category, total: categoryCards.length, completed, revisit, remaining: categoryCards.length - completed - revisit };
+  });
+  const completedTotal = Object.values(state.questionStatus).filter((status) => status === "completed").length;
+  const revisitTotal = Object.values(state.questionStatus).filter((status) => status === "revisit").length;
 
   useEffect(() => {
     if (!running) return;
@@ -353,6 +404,7 @@ function TodayView({
           <article className="focus-card accent-card">
             <div className="card-kicker">ACTIVE RECALL · {focusCard.category}</div>
             <h3>{focusCard.question}</h3>
+            <StudyStatusControl compact value={state.questionStatus[focusCard.id]} onChange={(status) => updateQuestionStatus(focusCard.id, status)} />
             {!revealed ? (
               <div className="recall-prompt">
                 <p>Answer out loud before revealing. Aim for 60–90 seconds.</p>
@@ -393,9 +445,29 @@ function TodayView({
         </div>
       </section>
 
+      <section className="status-section">
+        <div className="section-heading">
+          <div><span>02</span><h2>Study status by category</h2></div>
+          <p>Label every question so your next session starts with the right gaps.</p>
+        </div>
+        <div className="status-overview">
+          <div><strong>{completedTotal}</strong><span>Completed</span></div>
+          <div><strong>{revisitTotal}</strong><span>Need to revisit</span></div>
+          <div><strong>{cards.length - completedTotal - revisitTotal}</strong><span>Unlabeled</span></div>
+        </div>
+        <div className="status-table-wrap">
+          <table className="status-table">
+            <thead><tr><th>Category</th><th>Total</th><th>Completed</th><th>Revisit</th><th>Unlabeled</th></tr></thead>
+            <tbody>{statusRows.map((row) => (
+              <tr key={row.category}><th scope="row">{row.category}</th><td>{row.total}</td><td className="completed-count">{row.completed}</td><td className="revisit-count">{row.revisit}</td><td>{row.remaining}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </section>
+
       <section className="proof-section">
         <div className="section-heading light">
-          <div><span>02</span><h2>Your proof bank</h2></div>
+          <div><span>03</span><h2>Your proof bank</h2></div>
           <p>Concepts become credible when tied to shipped work.</p>
         </div>
         <div className="story-grid">
@@ -413,7 +485,7 @@ function TodayView({
   );
 }
 
-function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mastery>; updateMastery: (id: string, score: Mastery) => void }) {
+function ConceptsView({ mastery, questionStatus, updateMastery, updateQuestionStatus }: { mastery: Record<string, Mastery>; questionStatus: Record<string, QuestionStatus>; updateMastery: (id: string, score: Mastery) => void; updateQuestionStatus: (id: string, status?: QuestionStatus) => void }) {
   const categories = ["All", ...Array.from(new Set(cards.map((card) => card.category)))];
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -458,7 +530,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
       </div>
       <div className="library-summary">
         <span>{filtered.length} concepts</span>
-        <span>{Object.values(mastery).filter((value) => value === 2).length} interview ready</span>
+        <span>{Object.values(questionStatus).filter((value) => value === "completed").length} completed · {Object.values(questionStatus).filter((value) => value === "revisit").length} revisit</span>
       </div>
       <div className="concept-list">
         {filtered.map((card, index) => {
@@ -469,6 +541,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
               <button className="concept-summary" onClick={() => setOpenCard(isOpen ? null : card.id)} aria-expanded={isOpen}>
                 <span className="concept-number">{String(index + 1).padStart(2, "0")}</span>
                 <span className="concept-title"><small>{card.category} · {card.priority}</small><strong>{card.question}</strong></span>
+                <span className={`study-status-tag ${questionStatus[card.id] ?? "unlabeled"}`}>{questionStatus[card.id] ? questionStatusLabel[questionStatus[card.id]] : "Unlabeled"}</span>
                 <span className={`mastery-dot m${score}`}>{masteryLabel[score]}</span>
                 <span className="expand">{isOpen ? "−" : "+"}</span>
               </button>
@@ -483,6 +556,7 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
                   <div className="pressure-column">
                     <div><small>COMMON TRAP</small><p>{card.trap}</p></div>
                     <div className="follow-up-block"><small>FOLLOW-UP LADDER</small><ol>{getFollowUps(card).map((question) => <li key={question}>{question}</li>)}</ol></div>
+                    <StudyStatusControl value={questionStatus[card.id]} onChange={(status) => updateQuestionStatus(card.id, status)} />
                     <div className="rating-row vertical">
                       <small>RATE YOUR SPOKEN ANSWER</small>
                       <div><button className={score === 0 ? "selected" : ""} onClick={() => updateMastery(card.id, 0)}>Repair</button><button className={score === 1 ? "selected" : ""} onClick={() => updateMastery(card.id, 1)}>Clear</button><button className={score === 2 ? "selected" : ""} onClick={() => updateMastery(card.id, 2)}>Ready</button></div>
@@ -501,14 +575,18 @@ function ConceptsView({ mastery, updateMastery }: { mastery: Record<string, Mast
 function InterviewLab({
   notes,
   mastery,
+  questionStatus,
   updateNote,
   updateMastery,
+  updateQuestionStatus,
   recordAttempt,
 }: {
   notes: Record<string, string>;
   mastery: Record<string, Mastery>;
+  questionStatus: Record<string, QuestionStatus>;
   updateNote: (id: string, note: string) => void;
   updateMastery: (id: string, score: Mastery) => void;
+  updateQuestionStatus: (id: string, status?: QuestionStatus) => void;
   recordAttempt: () => void;
 }) {
   const [mode, setMode] = useState<"Mock answer" | "Design frame">("Mock answer");
@@ -639,6 +717,7 @@ function InterviewLab({
             {current.code && <pre className="question-code mock-code"><code>{current.code}</code></pre>}
             <div className={`answer-timer ${seconds <= 15 ? "urgent" : ""}`}><span>{String(Math.floor(seconds / 60)).padStart(2, "0")}</span>:<span>{String(seconds % 60).padStart(2, "0")}</span></div>
             <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === answerSeconds ? `Start ${answerSeconds}-second answer` : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
+            <StudyStatusControl value={questionStatus[current.id]} onChange={(status) => updateQuestionStatus(current.id, status)} />
             <label className="notes-field"><span>Capture only what broke—not a transcript.</span><textarea value={notes[current.id] ?? ""} onChange={(event) => updateNote(current.id, event.target.value)} placeholder="Example: I defined it, but missed the tradeoff and production failure..." /></label>
             <div className="rubric-checks">
               {rubricItems.map((item, index) => (

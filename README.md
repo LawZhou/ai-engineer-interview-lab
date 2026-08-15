@@ -11,6 +11,7 @@ It contains:
 - **202 primary interview questions** grounded in the supplied study plan, including 40 focused AI, ML, data engineering and data science rapid-fire drills
 - **Three follow-up questions per primary question**
 - Interview-ready answer frames, key signals, common traps, and mastery ratings
+- Per-question Completed / Need to revisit labels with a category breakdown on the home page
 - Timed mock answers and saved weak-point notes
 - ML and LLM system-design frameworks
 - A 10-week roadmap and readiness gate
