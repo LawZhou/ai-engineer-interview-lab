@@ -55,6 +55,7 @@ const rubricByCategory: Record<string, string[]> = {
   "Data science rapid fire": rapidFireRubric,
   "Pandtong replay": ["Direct answer", "Personal evidence", "Tradeoff", "Result", "Ready for follow-up"],
   "Mox Bank": ["Clarify constraints", "Correct mechanism", "Data correctness", "Failure and recovery", "Operational evidence"],
+  "Mox Python": ["Predict behavior", "Explain the mechanism", "Fix precisely", "Test an edge case", "Production implication"],
 };
 
 const followUpByCategory: Record<string, [string, string]> = {
@@ -101,6 +102,10 @@ const followUpByCategory: Record<string, [string, string]> = {
   "Mox Bank": [
     "How does this behave under retry, overload or partial failure?",
     "Which metric and runbook action would make this production-ready?",
+  ],
+  "Mox Python": [
+    "Which focused pytest would prove this behavior instead of relying on intuition?",
+    "How could this become a correctness, performance or operability issue in production?",
   ],
   "ML fundamentals": [
     "How would you validate this choice and monitor it in production?",

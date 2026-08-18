@@ -3,6 +3,7 @@ import { dataEngineeringCards } from "./data-engineering-cards";
 import { codingCards } from "./coding-cards";
 import { rapidFireCards } from "./rapid-fire-cards";
 import { moxInterviewCards } from "./mox-interview-cards";
+import { moxPythonCards } from "./mox-python-cards";
 
 export type Week = {
   week: number;
@@ -912,7 +913,7 @@ const coreCards: Card[] = [
   },
 ];
 
-export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards, ...codingCards, ...rapidFireCards, ...moxInterviewCards] satisfies Card[];
+export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards, ...codingCards, ...rapidFireCards, ...moxInterviewCards, ...moxPythonCards] satisfies Card[];
 
 export const readinessGate = [
   "Tell me about yourself.",
