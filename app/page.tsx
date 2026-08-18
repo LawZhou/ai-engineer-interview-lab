@@ -53,6 +53,8 @@ const rubricByCategory: Record<string, string[]> = {
   "ML rapid fire": rapidFireRubric,
   "Data engineering rapid fire": rapidFireRubric,
   "Data science rapid fire": rapidFireRubric,
+  "Pandtong replay": ["Direct answer", "Personal evidence", "Tradeoff", "Result", "Ready for follow-up"],
+  "Mox Bank": ["Clarify constraints", "Correct mechanism", "Data correctness", "Failure and recovery", "Operational evidence"],
 };
 
 const followUpByCategory: Record<string, [string, string]> = {
@@ -91,6 +93,14 @@ const followUpByCategory: Record<string, [string, string]> = {
   "Code review": [
     "Would you block this change, and which issue would you require the author to fix first?",
     "Which test or production signal would prove the revised code is safe?",
+  ],
+  "Pandtong replay": [
+    "What evidence from your own work makes this answer credible?",
+    "Which assumption or edge case would the interviewer challenge next?",
+  ],
+  "Mox Bank": [
+    "How does this behave under retry, overload or partial failure?",
+    "Which metric and runbook action would make this production-ready?",
   ],
   "ML fundamentals": [
     "How would you validate this choice and monitor it in production?",
