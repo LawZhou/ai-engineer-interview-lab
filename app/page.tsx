@@ -144,6 +144,10 @@ function getRubricItems(card: (typeof cards)[number]) {
   return rubricByCategory[card.category] ?? defaultRubric;
 }
 
+function formatPracticeDuration(seconds: number) {
+  return seconds >= 120 && seconds % 60 === 0 ? `${seconds / 60}-minute` : `${seconds}-second`;
+}
+
 function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) {
   const followUps = getFollowUps(card);
   return `Act as a rigorous AI/ML engineering interview coach.
@@ -726,7 +730,7 @@ function InterviewLab({
             <h2>{current.question}</h2>
             {current.code && <pre className="question-code mock-code"><code>{current.code}</code></pre>}
             <div className={`answer-timer ${seconds <= 15 ? "urgent" : ""}`}><span>{String(Math.floor(seconds / 60)).padStart(2, "0")}</span>:<span>{String(seconds % 60).padStart(2, "0")}</span></div>
-            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === answerSeconds ? `Start ${answerSeconds}-second answer` : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
+            <div className="mock-actions"><button className="primary" onClick={() => setRunning((value) => !value)}>{running ? "Pause" : seconds === answerSeconds ? `Start ${formatPracticeDuration(answerSeconds)} answer` : "Resume"}</button><button className="copy-ai-button" onClick={handleCopy} title="Copy the question, your notes, answer frame and coaching instructions">{copyStatus === "copied" ? "Copied for AI ✓" : copyStatus === "failed" ? "Copy failed—try again" : "Copy Q+A for AI"}</button><button className="text-button" onClick={nextQuestion}>Skip question →</button></div>
             <StudyStatusControl value={questionStatus[current.id]} onChange={(status) => updateQuestionStatus(current.id, status)} />
             <label className="notes-field"><span>Capture only what broke—not a transcript.</span><textarea value={notes[current.id] ?? ""} onChange={(event) => updateNote(current.id, event.target.value)} placeholder="Example: I defined it, but missed the tradeoff and production failure..." /></label>
             <div className="rubric-checks">

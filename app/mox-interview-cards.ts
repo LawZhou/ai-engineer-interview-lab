@@ -686,4 +686,61 @@ GROUP BY customer_id;`,
     followUp: "How would you distinguish security-group rejection, missing NAT and AWS API throttling from their symptoms and logs?",
     priority: "Build",
   },
+  {
+    id: "mox-code-double-click-deduplicator",
+    category: "Mox Bank",
+    question: "Recruiter drill (25 minutes): Flag and filter probable UI double-click transactions within 60 seconds.",
+    code: `from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+@dataclass(frozen=True)
+class Transaction:
+    transaction_id: str
+    user_id: str
+    merchant_id: str
+    currency: str
+    amount: Decimal
+    transaction_type: str
+    status: str
+    occurred_at: datetime
+
+def deduplicate_double_clicks(
+    transactions: Iterable[Transaction],
+    window: timedelta = timedelta(seconds=60),
+) -> Iterator[Transaction]:
+    """State and defend the ordering, identity, status,
+    boundary and keep-policy assumptions before coding."""
+    ...`,
+    answerSeconds: 1500,
+    answer: "Clarify that this is a heuristic: a real idempotency key is safer because two legitimate payments can share fields. For ordered UTC event time and comparable successful transaction types, scan once and map a defined fingerprint—such as user, merchant, currency, amount and type—to its last kept timestamp. Flag a match when 0 <= current_time - last_kept_time <= 60 seconds; do not advance the timestamp for a rejected event. Yield kept events and retain or audit flagged raw records. Use TTL state or an expiry heap for long streams. Expected time is O(n); exact bounded-memory handling of unbounded disorder is impossible without a lateness limit.",
+    signals: ["Clarify duplicate identity", "Last-kept invariant", "O(n) ordered scan", "Bounded active state"],
+    trap: "Comparing only adjacent rows, updating state with a discarded duplicate, using float for money, or claiming the heuristic guarantees that legitimate repeat payments are preserved.",
+    followUp: "How would the design change for out-of-order events, and which tests cover exactly 60 seconds and a three-event chain?",
+    priority: "Core",
+  },
+  {
+    id: "mox-sql-daily-ledger-balancer",
+    category: "Mox Bank",
+    question: "Recruiter drill (20 minutes): Produce every active account's daily movement and closing balance, including zero-activity days.",
+    code: `accounts(
+  account_id, opened_on, closed_on, opening_balance
+)
+
+ledger(
+  transaction_id, account_id, posted_at,
+  direction, amount, status, reverses_transaction_id
+)
+
+-- Parameters: :start_date, :end_date, :business_timezone
+-- Return: account_id, balance_date, daily_net, closing_balance
+-- Include one row for every day the account is active.`,
+    answerSeconds: 1200,
+    answer: "First define which statuses count, whether close dates are inclusive, how credits, debits and reversals are signed, and which business timezone determines the day. Build or use a bounded calendar table, join it to accounts only for active dates, and pre-aggregate valid signed ledger movements by account and business date. LEFT JOIN those movements to the scaffold and COALESCE missing daily_net—not balance—to zero. Seed each account from a trusted prior-day balance or opening balance plus all earlier movements, without overlap, then add SUM(daily_net) OVER (PARTITION BY account_id ORDER BY balance_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW). Reconcile totals and filter output only after the seed is correct.",
+    signals: ["Active-date scaffold", "Signed daily aggregation", "Correct pre-period seed", "ROWS window frame"],
+    trap: "Generating rows only for transaction dates, restarting every balance at zero on start_date, or allowing a join to multiply ledger amounts.",
+    followUp: "How would a late reversal for a previously reported day change the recomputation and audit strategy?",
+    priority: "Core",
+  },
 ];
