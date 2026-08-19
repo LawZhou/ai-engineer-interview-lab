@@ -46,6 +46,9 @@ const questionStatusLabel: Record<QuestionStatus, string> = {
 
 const defaultRubric = ["Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern"];
 const rapidFireRubric = ["Correct definition", "Key distinction", "Why it matters", "One tradeoff", "Under 45 seconds"];
+const hkexAwsRubric = ["Correct AWS mechanism", "Least privilege", "Failure behavior", "Eliminate alternatives", "Cost or operations"];
+const hkexSqlRubric = ["Correct result", "Null and tie semantics", "Scalable plan", "Deterministic output", "Test an edge case"];
+const hkexProblemSolvingRubric = ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Test quickly"];
 const rubricByCategory: Record<string, string[]> = {
   Coding: ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Production concern"],
   "Code review": ["Root cause", "Severity", "Concrete fix", "Tests", "Production impact"],
@@ -56,6 +59,14 @@ const rubricByCategory: Record<string, string[]> = {
   "Pandtong replay": ["Direct answer", "Personal evidence", "Tradeoff", "Result", "Ready for follow-up"],
   "Mox Bank": ["Clarify constraints", "Correct mechanism", "Data correctness", "Failure and recovery", "Operational evidence"],
   "Mox Python": ["Predict behavior", "Explain the mechanism", "Fix precisely", "Test an edge case", "Production implication"],
+  "HKEX AWS Basic": hkexAwsRubric,
+  "HKEX AWS Advanced": hkexAwsRubric,
+  "HKEX SQL Intermediate": hkexSqlRubric,
+  "HKEX SQL Advanced": hkexSqlRubric,
+  "HKEX Problem Solving Basic": hkexProblemSolvingRubric,
+  "HKEX Problem Solving Advanced": hkexProblemSolvingRubric,
+  "HKEX Interview": ["Business value", "Delivery evidence", "Data control", "Stakeholder alignment", "Risk and recovery"],
+  "CMBI Data Agent": ["Metric semantics", "Deterministic control", "Failure mode", "Evaluation evidence", "Regulatory auditability"],
 };
 
 const followUpByCategory: Record<string, [string, string]> = {
@@ -106,6 +117,38 @@ const followUpByCategory: Record<string, [string, string]> = {
   "Mox Python": [
     "Which focused pytest would prove this behavior instead of relying on intuition?",
     "How could this become a correctness, performance or operability issue in production?",
+  ],
+  "HKEX AWS Basic": [
+    "Why is the nearest plausible AWS alternative wrong for these requirements?",
+    "Which IAM, network and audit evidence would prove the design is safe?",
+  ],
+  "HKEX AWS Advanced": [
+    "How would this design behave during retry, partial failure or cross-account access?",
+    "Which cost, latency and recovery signals would you inspect first?",
+  ],
+  "HKEX SQL Intermediate": [
+    "Which null, duplicate or missing-row case could change the result?",
+    "What index or query-plan evidence would you inspect at production scale?",
+  ],
+  "HKEX SQL Advanced": [
+    "How would you prove the query is correct when ties, late data or cycles appear?",
+    "What would you look for in EXPLAIN before changing the physical design?",
+  ],
+  "HKEX Problem Solving Basic": [
+    "State the invariant and the exact time and space complexity.",
+    "Which smallest counterexample would break a naive solution?",
+  ],
+  "HKEX Problem Solving Advanced": [
+    "Why is this algorithm valid, and where is its complexity bound coming from?",
+    "How would you adapt it for input too large for one process or machine?",
+  ],
+  "HKEX Interview": [
+    "How would you turn this into testable acceptance criteria and a delivery plan?",
+    "Which stakeholder owns the residual risk, and what evidence supports the decision?",
+  ],
+  "CMBI Data Agent": [
+    "Which part must remain deterministic even if the LLM changes?",
+    "What trace, evaluation slice and control would let you defend this answer to a reviewer?",
   ],
   "ML fundamentals": [
     "How would you validate this choice and monitor it in production?",

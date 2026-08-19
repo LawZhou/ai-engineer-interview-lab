@@ -4,6 +4,14 @@ import { codingCards } from "./coding-cards";
 import { rapidFireCards } from "./rapid-fire-cards";
 import { moxInterviewCards } from "./mox-interview-cards";
 import { moxPythonCards } from "./mox-python-cards";
+import { hkexAwsBasicCards } from "./hkex-aws-basic-cards";
+import { hkexAwsAdvancedCards } from "./hkex-aws-advanced-cards";
+import { hkexSqlIntermediateCards } from "./hkex-sql-intermediate-cards";
+import { hkexSqlAdvancedCards } from "./hkex-sql-advanced-cards";
+import { hkexProblemSolvingBasicCards } from "./hkex-problem-solving-basic-cards";
+import { hkexProblemSolvingAdvancedCards } from "./hkex-problem-solving-advanced-cards";
+import { hkexInterviewCards } from "./hkex-interview-cards";
+import { cmbiDataAgentCards } from "./cmbi-data-agent-cards";
 
 export type Week = {
   week: number;
@@ -913,7 +921,23 @@ const coreCards: Card[] = [
   },
 ];
 
-export const cards = [...coreCards, ...extraCards, ...dataEngineeringCards, ...codingCards, ...rapidFireCards, ...moxInterviewCards, ...moxPythonCards] satisfies Card[];
+export const cards = [
+  ...coreCards,
+  ...extraCards,
+  ...dataEngineeringCards,
+  ...codingCards,
+  ...rapidFireCards,
+  ...moxInterviewCards,
+  ...moxPythonCards,
+  ...hkexAwsBasicCards,
+  ...hkexAwsAdvancedCards,
+  ...hkexSqlIntermediateCards,
+  ...hkexSqlAdvancedCards,
+  ...hkexProblemSolvingBasicCards,
+  ...hkexProblemSolvingAdvancedCards,
+  ...hkexInterviewCards,
+  ...cmbiDataAgentCards,
+] satisfies Card[];
 
 export const readinessGate = [
   "Tell me about yourself.",
