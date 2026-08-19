@@ -46,7 +46,7 @@ const questionStatusLabel: Record<QuestionStatus, string> = {
 
 const defaultRubric = ["Clear definition", "Concrete example", "Tradeoff", "Failure mode", "Production concern"];
 const rapidFireRubric = ["Correct definition", "Key distinction", "Why it matters", "One tradeoff", "Under 45 seconds"];
-const hkexAwsRubric = ["Correct AWS mechanism", "Least privilege", "Failure behavior", "Eliminate alternatives", "Cost or operations"];
+const hkexAwsRubric = ["Choose the best answer", "Spot the deciding keyword", "State the AWS rule", "Reject the closest distractor", "Under 60 seconds"];
 const hkexSqlRubric = ["Correct result", "Null and tie semantics", "Scalable plan", "Deterministic output", "Test an edge case"];
 const hkexProblemSolvingRubric = ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Test quickly"];
 const rubricByCategory: Record<string, string[]> = {
@@ -119,12 +119,12 @@ const followUpByCategory: Record<string, [string, string]> = {
     "How could this become a correctness, performance or operability issue in production?",
   ],
   "HKEX AWS Basic": [
-    "Why is the nearest plausible AWS alternative wrong for these requirements?",
-    "Which IAM, network and audit evidence would prove the design is safe?",
+    "Which keyword in the question eliminates the closest distractor?",
+    "State the AWS rule being tested in one sentence.",
   ],
   "HKEX AWS Advanced": [
-    "How would this design behave during retry, partial failure or cross-account access?",
-    "Which cost, latency and recovery signals would you inspect first?",
+    "Which requirement makes the correct service a better fit than the closest alternative?",
+    "What important limitation is the multiple-choice answer not testing?",
   ],
   "HKEX SQL Intermediate": [
     "Which null, duplicate or missing-row case could change the result?",
@@ -466,10 +466,11 @@ function TodayView({
           <article className="focus-card accent-card">
             <div className="card-kicker">ACTIVE RECALL · {focusCard.category}</div>
             <h3>{focusCard.question}</h3>
+            {focusCard.code && <pre className="question-code"><code>{focusCard.code}</code></pre>}
             <StudyStatusControl compact value={state.questionStatus[focusCard.id]} onChange={(status) => updateQuestionStatus(focusCard.id, status)} />
             {!revealed ? (
               <div className="recall-prompt">
-                <p>Answer out loud before revealing. Aim for 60–90 seconds.</p>
+                <p>Answer before revealing. Aim for a {formatPracticeDuration(focusCard.answerSeconds ?? 90)} response.</p>
                 <button className="dark-button" onClick={() => setRevealed(true)}>Reveal answer frame</button>
               </div>
             ) : (

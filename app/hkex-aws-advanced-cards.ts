@@ -4,94 +4,129 @@ export const hkexAwsAdvancedCards: Card[] = [
   {
     id: "hkex-aws-advanced-athena-layout",
     category: "HKEX AWS Advanced",
-    question: "Design an Athena table layout for ten years of high-volume trade data and control both scan cost and governance.",
-    code: `Common queries
-- One trading day across all markets
-- One market for a date range
-- Rare lookup by trade_id
-
-Current objects
-s3://lake/trades/<random-uuid>.json.gz
-
-Requirements
-- predictable cost
-- schema evolution
-- analyst isolation
-- reproducible query results`,
-    answerSeconds: 150,
-    answer: "Convert curated data to Parquet or ORC with compression and right-sized files, and partition on columns that match frequent equality filters, for example trading_date and market. Do not partition on high-cardinality trade_id; use a separate keyed lookup store or a bucketed/indexed design if that access pattern is important. Register an explicit schema in Glue, quarantine incompatible source changes, and use Iceberg when snapshot-level reproducibility and controlled evolution are required. Configure Athena workgroups with separate result locations, encryption, access controls, scan limits and cost metrics. Use partition projection only when the partition domain is predictable and not sparse; otherwise it can plan nonexistent locations. Validate pruning with EXPLAIN and bytes-scanned metrics rather than assuming a WHERE clause is enough.",
-    signals: ["Parquet and right-sized files", "Query-aligned partitions", "Workgroup guardrails", "Measured partition pruning"],
-    trap: "Partitioning by trade_id or hour for every dataset, creating millions of tiny partitions and moving cost from scanning into metadata and planning.",
-    followUp: "Which HKEX audit evidence would you preserve so an analyst can reproduce the exact version of data behind a management report?",
+    question: "An Athena query scans an entire S3 trade dataset even though it filters on trading_date. Which change is most likely to reduce bytes scanned?",
+    code: `Choose ONE
+A. Keep compressed JSON but rename every file with a longer random UUID.
+B. Partition by unique trade_id so every trade has its own S3 prefix.
+C. Convert the files to Parquet and partition the table by trading_date, then filter on that partition column.
+D. Increase the analyst laptop's memory before submitting the query.`,
+    answerSeconds: 50,
+    answer: "Correct answer: C. Columnar Parquet lets Athena read only required columns, while partitioning by a commonly filtered date lets it skip unrelated S3 prefixes. Random file names and laptop memory do not reduce the amount Athena scans, while partitioning by a unique identifier creates excessive partitions. Partition pruning still depends on querying the partition column correctly.",
+    signals: ["Answer C", "Parquet", "Date partitioning", "Partition pruning"],
+    trap: "Assuming a WHERE clause alone reduces scanning when the table layout does not support pruning.",
+    followUp: "Why would partitioning by unique trade_id usually be a poor choice?",
+    priority: "Core",
+  },
+  {
+    id: "hkex-aws-advanced-cli-identity",
+    category: "HKEX AWS Advanced",
+    question: "Before an AWS CLI deployment, which command best confirms the account and IAM identity currently in use?",
+    code: `Choose ONE
+A. aws sts get-caller-identity
+B. aws configure list
+C. aws iam list-users
+D. aws cloudtrail lookup-events`,
+    answerSeconds: 35,
+    answer: "Correct answer: A. aws sts get-caller-identity returns the active account, ARN and principal identity, which helps catch use of the wrong profile or assumed role before a deployment. aws configure list shows configuration sources but not the authoritative caller identity; listing users or audit events also does not directly identify the active caller.",
+    signals: ["Answer A", "STS", "Account and ARN", "Profile or role check"],
+    trap: "Assuming the shell is using the intended profile without checking the active caller.",
+    followUp: "How would you run the same command with a named CLI profile?",
+    priority: "Core",
+  },
+  {
+    id: "hkex-aws-advanced-quicksight-rls",
+    category: "HKEX AWS Advanced",
+    question: "A QuickSight dashboard should show each desk only its own trade rows. Which feature most directly implements this?",
+    code: `Choose ONE
+A. Put each desk's users in a different EC2 security group.
+B. Refresh the QuickSight SPICE dataset once per desk.
+C. Give every user access and hide unauthorized rows with dashboard colors.
+D. Configure QuickSight row-level security with a rules dataset mapping users or groups to allowed desk values.`,
+    answerSeconds: 45,
+    answer: "Correct answer: D. QuickSight row-level security filters dataset rows according to user or group mappings. Security groups control network traffic, SPICE refreshes do not define per-user authorization, and presentation choices are not security controls. Source-system permissions and export controls still matter because dashboard row-level security is not a substitute for every upstream authorization boundary.",
+    signals: ["Answer D", "Rules dataset", "User or group mapping", "Row filtering"],
+    trap: "Confusing network controls such as security groups with data-level authorization inside an analytics tool.",
+    followUp: "What is the difference between row-level and column-level security in a dashboard?",
+    priority: "Build",
+  },
+  {
+    id: "hkex-aws-advanced-dms-cutover",
+    category: "HKEX AWS Advanced",
+    question: "A database must be migrated with a short outage while writes continue during most of the migration. Which DMS approach best fits?",
+    code: `Choose ONE
+A. Take a one-time source snapshot and ignore all later writes.
+B. Run a full load plus change data capture, validate the target, then cut over after replication lag reaches an acceptable level.
+C. Use AWS Schema Conversion Tool alone; it continuously copies every data change.
+D. Stop the source for the entire multi-day full load.`,
+    answerSeconds: 50,
+    answer: "Correct answer: B. AWS DMS can perform the initial full load and then apply ongoing source changes through change data capture, reducing the final write-pause window. The target still needs schema compatibility checks and data reconciliation; task status alone is not proof that the migration is correct. A loses later writes, Schema Conversion Tool alone is not continuous replication, and D creates unnecessary downtime.",
+    signals: ["Answer B", "Full load", "Change data capture", "Validate before cutover"],
+    trap: "Believing DMS automatically converts every schema feature and proves source-target equality.",
+    followUp: "Which two checks would you run before declaring the target authoritative?",
     priority: "Build",
   },
   {
     id: "hkex-aws-advanced-step-functions-redrive",
     category: "HKEX AWS Advanced",
-    question: "Design a Step Functions workflow that validates, transforms, quality-checks and publishes an EDP dataset without double publishing.",
-    code: `States
-ValidateManifest -> RunTransform -> CheckQuality -> PublishCatalog -> Notify
-
-Failure cases
-- Transform times out after writing staging files.
-- Quality service returns a transient 503.
-- Catalog publish succeeds but Notify fails.
-- An operator redrives the failed execution.`,
-    answerSeconds: 150,
-    answer: "Give each dataset run a stable run ID and make every state idempotent against it. Write transforms to an isolated staging prefix and record completion metadata; quality checks read that immutable run. Retry only classified transient errors with bounded exponential backoff and jitter, catch permanent failures into a recorded failed state, and use timeouts and heartbeats for long jobs. Publish through a conditional metadata or catalog commit so the same run cannot become current twice. Notification must be replay-safe and must not determine whether publication committed. A Standard Workflow redrive preserves successful state history and resumes from the unsuccessful step; idempotency is still essential when that failed state completed an external side effect before reporting failure. Emit execution, business-control and data-quality metrics, and define a manual approval or rollback path for high-risk publication.",
-    signals: ["Stable run identity", "Idempotent state effects", "Conditional publish boundary", "Bounded retry and redrive"],
-    trap: "Assuming Step Functions makes arbitrary Lambda, Glue, catalog and notification side effects exactly once.",
-    followUp: "Where would HKEX require a human approval, and what evidence should that approver see before publication?",
-    priority: "Advanced",
+    question: "Which AWS service is designed to coordinate several Lambda functions with branching, retries and visible execution state?",
+    code: `Choose ONE
+A. Amazon EventBridge Scheduler
+B. Amazon SQS
+C. Lambda asynchronous destinations
+D. AWS Step Functions`,
+    answerSeconds: 30,
+    answer: "Correct answer: D. Step Functions models a workflow as a state machine and supports sequencing, choices, retries, catches and execution history. EventBridge can schedule or route events, SQS buffers messages, and Lambda destinations route invocation results, but none directly models the stated multi-step branching workflow. Retries do not make external side effects exactly once, so tasks should still be idempotent.",
+    signals: ["Answer D", "State machine", "Retry and catch", "Idempotent tasks"],
+    trap: "Assuming the workflow service automatically makes every Lambda or external write exactly once.",
+    followUp: "What is the difference between a Retry rule and a Catch rule?",
+    priority: "Core",
   },
   {
-    id: "hkex-aws-advanced-dms-cutover",
+    id: "hkex-aws-advanced-codedeploy-ec2",
     category: "HKEX AWS Advanced",
-    question: "Plan an AWS DMS full-load-plus-CDC migration of a critical reference database with a short cutover window.",
-    code: `Source: PostgreSQL on premises, 8 TB
-Target: Amazon RDS PostgreSQL
-Change rate: continuous during migration
-Requirements: <15 minutes write pause, validated row and value accuracy, rollback plan`,
-    answerSeconds: 180,
-    answer: "Assess unsupported types, extensions, large objects, keys and DDL first; DMS moves data but is not a universal schema-conversion or application-migration tool. Create and test the target schema, establish encrypted network connectivity and least-privilege endpoints, then start full load and CDC from a known log position. Monitor table errors, replication latency and source-log retention so a long load cannot lose required WAL. Validate counts, checksums and business aggregates by table and reconcile a sampled or fully hashed dataset. Before cutover, rehearse application compatibility, pause writes, let CDC reach zero lag, run final controls, switch through a reversible connection mechanism, and observe. Keep the source intact and define the rollback point; acknowledge that writes made only on the new target complicate reversal.",
-    signals: ["Schema compatibility assessment", "Full load plus CDC", "Control-total validation", "Rehearsed reversible cutover"],
-    trap: "Treating DMS task status or zero CDC lag as proof that source and target are semantically identical.",
-    followUp: "Which reconciliation controls would HKEX require before declaring the migrated reference data authoritative?",
-    priority: "Advanced",
+    question: "Which combination is central to an automated CodeDeploy deployment onto EC2 instances?",
+    code: `Choose ONE
+A. A CloudFormation stack plus an Athena workgroup.
+B. A deployment group plus an AppSpec file that defines files and lifecycle hooks.
+C. An Auto Scaling group plus EC2 user data, with no CodeDeploy configuration.
+D. A CodePipeline pipeline plus an S3 lifecycle rule.`,
+    answerSeconds: 45,
+    answer: "Correct answer: B. The deployment group identifies deployment targets and configuration, while the AppSpec file tells CodeDeploy what to copy and which lifecycle hook scripts to run. CloudFormation, user data and CodePipeline may participate in a broader delivery system, but they do not replace these CodeDeploy-specific components. Health checks and automatic rollback should be configured for a safer production rollout.",
+    signals: ["Answer B", "Deployment group", "AppSpec file", "Lifecycle hooks"],
+    trap: "Choosing a general AWS service pair without identifying the CodeDeploy-specific deployment artifacts.",
+    followUp: "Which deployment strategy reduces risk by shifting traffic to a replacement environment?",
+    priority: "Build",
   },
   {
     id: "hkex-aws-advanced-spectrum-versus-copy",
     category: "HKEX AWS Advanced",
-    question: "Choose between Redshift Spectrum and loading data into native Redshift tables for two analytics workloads.",
-    code: `Workload A
-- Daily dashboards repeatedly join 24 months of trades to small dimensions.
-- Tight latency SLO and high concurrency.
-
-Workload B
-- Occasional investigation of seven years of archived Parquet in S3.
-- Most queries touch one date range and a few columns.`,
-    answerSeconds: 150,
-    answer: "Workload A usually belongs in native Redshift tables because repeated, latency-sensitive joins benefit from managed statistics, local storage, materialized views and appropriate distribution/sort design; load with COPY rather than row inserts. Workload B is a strong Spectrum case because it can query partitioned columnar archives without first loading all data. Both depend on pruning, file layout and Glue/external-schema permissions. Do not present the choice as permanent: hot curated windows can be native while cold history remains external, exposed through consistent views. Measure bytes scanned, redistribution, queue time and concurrency, and inspect the plan. Secure the Redshift role, S3 prefixes and catalog separately under least privilege.",
-    signals: ["Hot native, cold external", "COPY for bulk load", "Partition and column pruning", "Plan and cost evidence"],
-    trap: "Saying Spectrum is automatically cheaper or faster because the data stays in S3; repeated broad scans and poor layout can be expensive and slow.",
-    followUp: "How would you give HKEX analysts one stable semantic view while moving data between hot and archive tiers?",
-    priority: "Build",
+    question: "Analysts need to query Parquet files in S3 from Redshift without loading them into native Redshift tables. What should they use?",
+    code: `Choose ONE
+A. COPY every file into a native Redshift table before each query.
+B. Use Athena Federated Query through an EC2 security group.
+C. Use Redshift Spectrum with an external schema and catalog metadata.
+D. Package the Parquet files inside a Lambda layer.`,
+    answerSeconds: 35,
+    answer: "Correct answer: C. Redshift Spectrum queries external tables backed by data in S3, normally using an external schema and catalog metadata such as the AWS Glue Data Catalog. COPY loads data into native tables rather than querying it in place, while the other choices do not provide Redshift external-table access.",
+    signals: ["Answer C", "External schema", "S3 external tables", "Glue catalog metadata"],
+    trap: "Thinking external data must first be copied into Redshift for Spectrum to query it.",
+    followUp: "When might repeatedly queried hot data perform better in native Redshift tables?",
+    priority: "Core",
   },
   {
     id: "hkex-aws-advanced-service-selection",
     category: "HKEX AWS Advanced",
-    question: "Map each advanced AWS requirement to the most direct service or tool, and explain the capability boundary.",
-    code: `A. Run repeatable cross-account resource commands in a deployment job.
-B. Apply row-level access rules to an interactive business dashboard.
-C. Coordinate a multi-step serverless workflow with retries and branches.
-D. Perform rolling application deployment to an EC2 Auto Scaling group.
-E. Expose a trained model through a managed HTTPS inference endpoint.
-F. Query archived S3 tables from Redshift without loading them.`,
-    answerSeconds: 120,
-    answer: "A uses the AWS CLI or SDK under an assumed deployment role; scripts still need idempotency, error checking and pinned inputs. B uses QuickSight row-level security and governed datasets, but source permissions and export controls still matter. C uses Step Functions; it coordinates services but does not make their side effects atomic. D uses CodeDeploy with an Auto Scaling deployment group, health validation and rollback. E uses a SageMaker real-time endpoint when managed model hosting fits the latency and scale; it does not replace model evaluation or API authorization. F uses Redshift Spectrum through an external schema backed by the Glue Catalog and a least-privilege Redshift IAM role.",
-    signals: ["Correct service mapping", "Assumed-role automation", "Security boundary", "Failure and cost boundary"],
-    trap: "Naming a service without explaining what it does not guarantee—for example, treating orchestration as a transaction or a dashboard rule as source-level authorization.",
-    followUp: "Which of these services would be hardest to approve for HKEX data, and what control evidence would reduce that risk?",
+    question: "A trained model needs a managed HTTPS endpoint with provisioned capacity for steady, low-latency online predictions. Which option is the best fit?",
+    code: `Choose ONE
+A. SageMaker Batch Transform
+B. A SageMaker real-time inference endpoint
+C. A SageMaker Processing job
+D. An S3 static website endpoint`,
+    answerSeconds: 40,
+    answer: "Correct answer: B. A SageMaker real-time endpoint is designed for persistent, low-latency online inference over HTTPS with provisioned instances. Batch Transform is for asynchronous batch inference, Processing jobs run data or model-processing workloads, and S3 static hosting does not run a model.",
+    signals: ["Answer B", "Real-time endpoint", "Low-latency HTTPS", "Batch versus online inference"],
+    trap: "Selecting Batch Transform because it also performs inference without noticing the online latency requirement.",
+    followUp: "When would SageMaker Batch Transform be the better choice?",
     priority: "Build",
   },
 ];
