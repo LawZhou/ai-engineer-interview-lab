@@ -10,7 +10,7 @@ import {
   weeks,
 } from "./study-data";
 
-type View = "Today" | "Concepts" | "Interview lab" | "Roadmap";
+type View = "Progress" | "Today" | "Concepts" | "Interview lab" | "Roadmap";
 type Mastery = 0 | 1 | 2;
 type QuestionStatus = "completed" | "revisit";
 type StudyState = {
@@ -264,7 +264,8 @@ function StudyStatusControl({
 }
 
 export default function Home() {
-  const [view, setView] = useState<View>("Today");
+  const [view, setView] = useState<View>("Progress");
+  const [labCategory, setLabCategory] = useState("All");
   const [state, setState] = useState<StudyState>(EMPTY_STATE);
   const [hydrated, setHydrated] = useState(false);
   const [todayIndex, setTodayIndex] = useState(0);
@@ -323,27 +324,40 @@ export default function Home() {
     setState((current) => ({ ...current, notes: { ...current.notes, [id]: note } }));
   };
 
+  const completedTotal = cards.filter((card) => state.questionStatus[card.id] === "completed").length;
+  const revisitTotal = cards.filter((card) => state.questionStatus[card.id] === "revisit").length;
+
+  const openLab = (category = "All") => {
+    setLabCategory(category);
+    setView("Interview lab");
+  };
+
   return (
     <div className="site-shell">
       <header className="topbar">
-        <button className="brand" onClick={() => setView("Today")} aria-label="Go to today">
+        <button className="brand" onClick={() => setView("Progress")} aria-label="Go to study progress">
           <span className="brand-mark">F</span>
-          <span><strong>FORGE</strong><small>AI INTERVIEW LAB</small></span>
+          <span><strong>FORGE</strong><small>INTERVIEW PRACTICE</small></span>
         </button>
         <nav aria-label="Primary navigation">
-          {(["Today", "Concepts", "Interview lab", "Roadmap"] as View[]).map((item) => (
-            <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-              {item}
-            </button>
-          ))}
+          <button className={view === "Progress" ? "active" : ""} onClick={() => setView("Progress")}>Progress</button>
+          <button className={view === "Interview lab" ? "active" : ""} onClick={() => openLab()}>Interview Lab</button>
         </nav>
-        <div className="readiness-chip" aria-label={`${readiness} percent interview ready`}>
-          <span>{readiness}%</span>
-          <small>READINESS</small>
+        <div className="header-progress" aria-label={`${completedTotal} completed and ${revisitTotal} need revisiting`}>
+          <span><strong>{completedTotal}</strong> completed</span>
+          <i aria-hidden="true" />
+          <span><strong>{revisitTotal}</strong> revisit</span>
         </div>
       </header>
 
       <main>
+        {view === "Progress" && (
+          <ProgressView
+            questionStatus={state.questionStatus}
+            onOpenLab={() => openLab()}
+            onPracticeCategory={openLab}
+          />
+        )}
         {view === "Today" && (
           <TodayView
             state={state}
@@ -358,6 +372,7 @@ export default function Home() {
         {view === "Concepts" && <ConceptsView mastery={state.mastery} questionStatus={state.questionStatus} updateMastery={updateMastery} updateQuestionStatus={updateQuestionStatus} />}
         {view === "Interview lab" && (
           <InterviewLab
+            initialCategory={labCategory}
             notes={state.notes}
             mastery={state.mastery}
             questionStatus={state.questionStatus}
@@ -373,10 +388,75 @@ export default function Home() {
       </main>
 
       <footer>
-        <span>FORGE / BUILT FOR PRACTICE, NOT BROWSING</span>
+        <span>FORGE / INTERVIEW PRACTICE</span>
         <span>Your progress stays on this device.</span>
       </footer>
     </div>
+  );
+}
+
+function ProgressView({
+  questionStatus,
+  onOpenLab,
+  onPracticeCategory,
+}: {
+  questionStatus: Record<string, QuestionStatus>;
+  onOpenLab: () => void;
+  onPracticeCategory: (category: string) => void;
+}) {
+  const statusRows = Array.from(new Set(cards.map((card) => card.category))).map((category) => {
+    const categoryCards = cards.filter((card) => card.category === category);
+    const completed = categoryCards.filter((card) => questionStatus[card.id] === "completed").length;
+    const revisit = categoryCards.filter((card) => questionStatus[card.id] === "revisit").length;
+    const unlabeled = categoryCards.length - completed - revisit;
+    return { category, total: categoryCards.length, completed, revisit, unlabeled };
+  });
+  const completedTotal = cards.filter((card) => questionStatus[card.id] === "completed").length;
+  const revisitTotal = cards.filter((card) => questionStatus[card.id] === "revisit").length;
+  const unlabeledTotal = cards.length - completedTotal - revisitTotal;
+
+  return (
+    <section className="progress-page page-section">
+      <div className="progress-hero">
+        <div>
+          <div className="eyebrow">YOUR STUDY TRACKER</div>
+          <h1>Study progress</h1>
+          <p>See what is finished, what needs another pass, and jump straight into practice by category.</p>
+        </div>
+        <button className="primary" onClick={onOpenLab}>Open Interview Lab <span>→</span></button>
+      </div>
+
+      <div className="status-overview" aria-label="Overall study status">
+        <div className="summary-card completed"><span>Completed</span><strong>{completedTotal}</strong><small>of {cards.length} questions</small></div>
+        <div className="summary-card revisit"><span>Need to revisit</span><strong>{revisitTotal}</strong><small>questions to repair</small></div>
+        <div className="summary-card unlabeled"><span>Unlabeled</span><strong>{unlabeledTotal}</strong><small>questions remaining</small></div>
+      </div>
+
+      <div className="tracker-heading">
+        <div><h2>Study status by category</h2><p>Your labels update here as you practise in the Interview Lab.</p></div>
+        <span>{statusRows.length} categories · {cards.length} questions</span>
+      </div>
+      <div className="status-table-wrap">
+        <table className="status-table">
+          <thead><tr><th>Category</th><th>Progress</th><th>Total</th><th>Completed</th><th>Revisit</th><th>Unlabeled</th><th><span className="sr-only">Practice</span></th></tr></thead>
+          <tbody>{statusRows.map((row) => {
+            const labeled = row.completed + row.revisit;
+            const progress = row.total === 0 ? 0 : Math.round((labeled / row.total) * 100);
+            return (
+              <tr key={row.category}>
+                <th scope="row">{row.category}</th>
+                <td className="progress-cell"><div><i style={{ width: `${progress}%` }} /></div><span>{progress}%</span></td>
+                <td>{row.total}</td>
+                <td className="completed-count">{row.completed}</td>
+                <td className="revisit-count">{row.revisit}</td>
+                <td>{row.unlabeled}</td>
+                <td><button className="practice-category" onClick={() => onPracticeCategory(row.category)} aria-label={`Practice ${row.category}`}>Practice <span>→</span></button></td>
+              </tr>
+            );
+          })}</tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
@@ -636,6 +716,7 @@ function ConceptsView({ mastery, questionStatus, updateMastery, updateQuestionSt
 }
 
 function InterviewLab({
+  initialCategory,
   notes,
   mastery,
   questionStatus,
@@ -644,6 +725,7 @@ function InterviewLab({
   updateQuestionStatus,
   recordAttempt,
 }: {
+  initialCategory: string;
   notes: Record<string, string>;
   mastery: Record<string, Mastery>;
   questionStatus: Record<string, QuestionStatus>;
@@ -653,7 +735,7 @@ function InterviewLab({
   recordAttempt: () => void;
 }) {
   const [mode, setMode] = useState<"Mock answer" | "Design frame">("Mock answer");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState(initialCategory);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [questionQuery, setQuestionQuery] = useState("");
   const [seconds, setSeconds] = useState(90);
@@ -727,8 +809,9 @@ function InterviewLab({
     <section className="page-section lab-page">
       <div className="lab-header">
         <div className="page-title compact">
-          <div className="eyebrow">PRACTICE / INTERVIEW PRESSURE</div>
-          <h1>Make the answer <em>land.</em></h1>
+          <div className="eyebrow">FOCUSED PRACTICE</div>
+          <h1>Interview Lab</h1>
+          <p>Choose a question, answer under time pressure, then repair the weak points.</p>
         </div>
         <div className="segmented">
           <button className={mode === "Mock answer" ? "active" : ""} onClick={() => setMode("Mock answer")}>Mock answer</button>
