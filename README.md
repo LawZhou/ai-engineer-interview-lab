@@ -8,7 +8,7 @@ Forge is a serious study app for AI Engineer, LLM Engineer, ML Engineer, Applied
 
 It contains:
 
-- **400 primary interview questions** grounded in the supplied study plan, including 46 drills across the six exact HKEX HackerRank sections, 12 HKEX CDO interview scenarios, 40 senior CMBI Data Agent drills, 40 Mox Python drills, 60 Pandtong replay and Mox Bank drills, and 40 focused AI, ML, data engineering and data science rapid-fire drills
+- **420 primary interview questions** grounded in the supplied study plan, including 66 drills across the six exact HKEX HackerRank sections, 12 HKEX CDO interview scenarios, 40 senior CMBI Data Agent drills, 40 Mox Python drills, 60 Pandtong replay and Mox Bank drills, and 40 focused AI, ML, data engineering and data science rapid-fire drills
 - **Three follow-up questions per primary question**
 - Interview-ready answer frames, key signals, common traps, and mastery ratings
 - Per-question Completed / Need to revisit labels with a category breakdown on the home page
