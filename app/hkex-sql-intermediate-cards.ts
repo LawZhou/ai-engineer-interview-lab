@@ -127,7 +127,7 @@ ORDER BY t.trading_date, t.market, t.turnover DESC, t.security_id;`,
   },
   {
     id: "hkex-sql-intermediate-current-archive-union",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "Combine current and archive trade tables without dropping legitimate duplicate-valued rows or double counting the retention boundary.",
     code: `-- PostgreSQL
 trade_current(trade_id bigint, trading_date date, market text, turnover numeric)
@@ -170,7 +170,7 @@ ORDER BY trading_date, market;`,
   },
   {
     id: "hkex-sql-intermediate-monthly-turnover-change",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "Return monthly turnover and month-over-month change for every market, including months with no trades.",
     code: `-- PostgreSQL
 markets(market text PRIMARY KEY)
@@ -325,7 +325,7 @@ An index beginning with security_id and then the selective date or status column
   },
   {
     id: "hkex-sql-intermediate-top-three-securities",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "Return exactly the top three securities by executed turnover in each market and trading date.",
     code: `-- PostgreSQL
 trades(
@@ -374,7 +374,7 @@ If the business instead wants all tied third-place securities, use RANK or DENSE
   },
   {
     id: "hkex-sql-intermediate-latest-successful-load",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "Return every dataset and its latest successful load, including datasets that have never loaded successfully.",
     code: `-- PostgreSQL
 datasets(dataset_id bigint PRIMARY KEY, dataset_name text NOT NULL)
@@ -623,7 +623,7 @@ OVERFILLED is surfaced as a data-quality exception rather than hidden by clampin
   },
   {
     id: "hkex-sql-intermediate-previous-trade-gap",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "For each executed trade, show the previous executed trade time and elapsed seconds for the same security.",
     code: `-- PostgreSQL
 trades(
@@ -667,7 +667,7 @@ The first trade per security has null previous time and null elapsed seconds; th
   },
   {
     id: "hkex-sql-intermediate-notional-buckets",
-    category: "HKEX SQL Intermediate",
+    category: "HKEX SQL Advanced",
     question: "Bucket executed trades by notional and calculate each bucket's percentage of that trading date's trades.",
     code: `-- PostgreSQL
 trades(
