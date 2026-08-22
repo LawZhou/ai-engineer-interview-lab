@@ -198,12 +198,35 @@ function formatPracticeDuration(seconds: number) {
 
 function buildAiCoachPrompt(card: (typeof cards)[number], learnerNote?: string) {
   const followUps = getFollowUps(card);
-  return `Act as a rigorous AI/ML engineering interview coach.
+  const targetDuration = card.answerSeconds
+    ? `${card.answerSeconds} seconds`
+    : "60–90 seconds";
+  return `Act as a rigorous interviewer and answer-performance evaluator for an AI/ML/data engineering interview.
 
-Interview question:
+Run this as a two-phase interview simulation. Do not teach or reveal any evaluator material before my attempt.
+
+PHASE 1 — COLD INTERVIEW ATTEMPT
+Your first reply must only:
+1. Say: "Interview mode. One attempt, no hints."
+2. Ask the interview question below again, including the code or query when provided.
+3. Tell me the target answer time is ${targetDuration}.
+4. Wait for my answer. Do not include hints, signals, a framework, the reference answer, or feedback.
+
+Treat my next message as my complete official attempt. Do not interrupt or coach me during it. If I ask for a hint, remind me that interview mode has no hints and ask me to make my best attempt.
+
+I may answer in concise point form to save time. Do not penalize point form by itself, but require a clear, natural logical flow. A strong answer usually states the principle first, then implementation, an important edge case or trade-off, and a production example when relevant.
+
+INTERVIEW QUESTION
 ${card.question}
 
-${card.code ? `Code or query to analyze:\n\`\`\`\n${card.code}\n\`\`\`\n\n` : ""}${learnerNote?.trim() ? `My draft answer or weak-point notes:\n${learnerNote.trim()}\n\n` : ""}Reference answer frame:
+${card.code ? `CODE OR QUERY
+\`\`\`
+${card.code}
+\`\`\`
+
+` : ""}PRIVATE EVALUATOR MATERIAL — DO NOT REVEAL BEFORE MY ATTEMPT
+
+${learnerNote?.trim() ? `Prior weak-point notes for evaluator context only; these are not my official attempt:\n${learnerNote.trim()}\n\n` : ""}Reference answer frame:
 ${card.answer}
 
 Important signals:
@@ -215,11 +238,20 @@ ${card.trap}
 Follow-up ladder:
 ${followUps.map((question, index) => `${index + 1}. ${question}`).join("\n")}
 
-Please:
-1. Rate the answer Red, Yellow, or Green. Green requires: ${getRubricItems(card).join(", ")}.
-2. Identify anything missing, vague, or technically incorrect.
-3. Give me a stronger ${card.answerSeconds ? `answer that fits within ${card.answerSeconds} seconds` : "60–90 second answer"} in natural spoken language.
-4. Ask the follow-up questions one at a time, waiting for my response before continuing.
+PHASE 2 — EVALUATE ONLY AFTER MY ONE ATTEMPT
+After I answer, provide:
+1. An overall Red, Yellow, or Green result. Green requires: ${getRubricItems(card).join(", ")}.
+2. Scores from 1–5 for technical correctness, reasoning, structure, conciseness, depth, and seniority signal.
+3. The primary failure type, plus a secondary type only when useful:
+   - K — Knowledge gap: I did not know the required concept.
+   - R — Reasoning gap: I knew the concepts but did not derive the solution.
+   - C — Communication gap: the answer was correct but unclear, poorly ordered, or meandering.
+   - E — Example gap: the explanation lacked convincing real-world evidence.
+   - D — Depth gap: the initial answer worked, but important details or trade-offs were shallow.
+4. A concise "what happened" diagnosis. Do not reconstruct a transcript.
+5. What was correct, followed by anything missing, vague, technically wrong, or poorly sequenced.
+6. A stronger answer that fits within ${targetDuration}. Point form is allowed, but it must sound natural and follow a coherent principle → implementation → edge case/trade-off → example flow where applicable.
+7. Then ask the follow-up questions one at a time, waiting for each response before continuing.
 
 Do not invent personal experience for me. Use [ADD YOUR EXAMPLE] where my own project evidence is needed.`;
 }
