@@ -50,6 +50,7 @@ const hkexAwsRubric = ["Choose the best answer", "Spot the deciding keyword", "S
 const hkexSqlRubric = ["Correct result", "Null and tie semantics", "Scalable plan", "Deterministic output", "Test an edge case"];
 const hkexProblemSolvingRubric = ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Test quickly"];
 const rubricByCategory: Record<string, string[]> = {
+  Positioning: ["Direct answer", "Personal evidence", "Clear ownership", "Result or learning", "Role-specific close"],
   Coding: ["Correct algorithm", "Complexity", "Edge cases", "Clear walkthrough", "Production concern"],
   "Code review": ["Root cause", "Severity", "Concrete fix", "Tests", "Production impact"],
   "AI rapid fire": rapidFireRubric,
